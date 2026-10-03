@@ -3,7 +3,11 @@
  * Seamless communication with FastAPI backend endpoints with graceful fallback handling
  */
 
-const API_BASE = '/api';
+// API base: uses VITE_API_URL env in production, relative path in local dev (Vite proxy)
+const API_BASE = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL}/api`
+  : '/api';
+
 
 async function fetchJSON(endpoint, options = {}) {
   try {
