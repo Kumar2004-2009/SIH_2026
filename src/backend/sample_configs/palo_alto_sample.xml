@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<config version="10.2.0" urldb="paloaltonetworks">
+  <mgt-config>
+    <users>
+      <entry name="admin">
+        <phash>$1$bvndksla$abcdef1234567890</phash>
+        <permissions>
+          <role-based>
+            <superuser>yes</superuser>
+          </role-based>
+        </permissions>
+      </entry>
+    </users>
+  </mgt-config>
+  <shared>
+    <application/>
+    <service/>
+    <botnet/>
+  </shared>
+  <devices>
+    <entry name="localhost.localdomain">
+      <deviceconfig>
+        <system>
+          <type>
+            <static/>
+          </type>
+          <update-server>staticupdates.paloaltonetworks.com</update-server>
+          <hostname>PA-5220-DC</hostname>
+          <ip-address>10.0.3.1</ip-address>
+          <netmask>255.255.255.0</netmask>
+          <service>
+            <disable-telnet>yes</disable-telnet>
+            <disable-http>no</disable-http>
+          </service>
+        </system>
+      </deviceconfig>
+    </entry>
+  </devices>
+</config>
