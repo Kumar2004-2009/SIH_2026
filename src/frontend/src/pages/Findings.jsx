@@ -1,28 +1,33 @@
 import React, { useState, useEffect } from 'react';
-import {
-  AlertTriangle,
-  Search,
-  Sparkles,
-  Code2,
-  Wrench
-} from 'lucide-react';
+import { Search, Brain, Code2, Wrench, Copy, Check } from 'lucide-react';
 import { api } from '../api/client';
 import SeverityBadge from '../components/SeverityBadge';
 import AIModal from '../components/AIModal';
 
+function CopyButton({ text }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text || '').then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+  return (
+    <button onClick={handleCopy} className="btn btn-ghost p-1" title="Copy to clipboard">
+      {copied ? <Check className="w-3.5 h-3.5 text-[#5b9e6e]" /> : <Copy className="w-3.5 h-3.5" />}
+    </button>
+  );
+}
+
 export default function Findings({ setActiveTab, onSelectRemediation }) {
   const [findings, setFindings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({
-    severity: '',
-    framework: '',
-    status: '',
-    search: '',
-  });
+  const [filters, setFilters] = useState({ severity: '', framework: '', status: '', search: '' });
   const [selectedFinding, setSelectedFinding] = useState(null);
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiData, setAiData] = useState(null);
+  const [sortBy, setSortBy] = useState({ col: 'risk_score', dir: 'desc' });
 
   useEffect(() => {
     fetchFindings();
@@ -33,28 +38,26 @@ export default function Findings({ setActiveTab, onSelectRemediation }) {
     try {
       const data = await api.getFindings(filters);
       setFindings(data || []);
-      if (data && data.length > 0 && !selectedFinding) {
-        setSelectedFinding(data[0]);
-      }
-    } catch (e) {
-      console.error('Error fetching findings:', e);
+      if (data?.length > 0 && !selectedFinding) setSelectedFinding(data[0]);
+    } catch {
+      /* no-op */
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAIEvaluation = async (finding) => {
+  const handleAIEval = async (finding) => {
     setAiLoading(true);
     setAiModalOpen(true);
-    setAiData({ title: finding.title, source: 'Querying Gemini Engine...' });
+    setAiData({ title: finding.title, source: 'Querying engine…' });
     try {
       const res = await api.explainFindingAI(finding.finding_id);
       setAiData(res);
-    } catch (e) {
+    } catch {
       setAiData({
         title: finding.title,
-        source: 'NETRA Sovereign Heuristics',
-        explanation: 'Deterministic evaluation indicates this configuration exposes network telemetry to unencrypted transmission and credential unauthorized harvest.'
+        source: 'NETRA Deterministic',
+        explanation: 'Deterministic evaluation: this configuration exposes the device to credential harvest and lateral movement via unencrypted management plane access.',
       });
     } finally {
       setAiLoading(false);
@@ -80,121 +83,146 @@ export default function Findings({ setActiveTab, onSelectRemediation }) {
     );
   });
 
+  const sorted = [...filtered].sort((a, b) => {
+    const dir = sortBy.dir === 'asc' ? 1 : -1;
+    const va = a[sortBy.col] ?? '';
+    const vb = b[sortBy.col] ?? '';
+    return va < vb ? -dir : va > vb ? dir : 0;
+  });
+
+  const toggleSort = (col) => {
+    setSortBy((prev) => ({
+      col,
+      dir: prev.col === col && prev.dir === 'desc' ? 'asc' : 'desc',
+    }));
+  };
+
+  const SortArrow = ({ col }) => {
+    if (sortBy.col !== col) return <span className="ml-1 opacity-20">↕</span>;
+    return <span className="ml-1">{sortBy.dir === 'asc' ? '↑' : '↓'}</span>;
+  };
+
   return (
-    <div className="space-y-5 pb-12">
+    <div className="space-y-3 pb-10">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-bold font-mono tracking-tight text-slate-100 flex items-center gap-2">
-          <AlertTriangle className="w-5 h-5 text-rose-400" />
-          Findings & Evidence Repository
-        </h1>
-        <p className="text-xs text-slate-400 mt-1 font-sans">
-          Audit evidence with verbatim line extractions and deterministic threat reasoning
+        <h1 className="text-[20px] font-bold text-[var(--text-primary)] tracking-tight">Findings</h1>
+        <p className="text-[12px] text-[var(--text-muted)] mt-0.5">
+          {loading ? 'Loading…' : `${filtered.length} violations · verbatim config evidence`}
         </p>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="bg-[#0f1523] border border-slate-800 rounded-lg p-3 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-subtle">
-        <div className="relative w-full sm:w-80">
-          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+      {/* Filters */}
+      <div className="panel p-2.5 flex flex-col sm:flex-row items-start sm:items-center gap-2">
+        <div className="relative">
+          <Search className="w-3.5 h-3.5 text-[var(--text-muted)] absolute left-2.5 top-2.5" aria-hidden="true" />
           <input
+            id="findings-search"
             type="text"
-            placeholder="Search findings by ID, evidence, title..."
+            placeholder="Search title, control ID, evidence…"
             value={filters.search}
             onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-            className="w-full bg-slate-900 border border-slate-700 rounded-md pl-9 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono"
+            className="form-control pl-8 w-72"
           />
         </div>
-
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+        <div className="flex flex-wrap gap-2">
           <select
+            id="findings-filter-severity"
             value={filters.severity}
             onChange={(e) => setFilters({ ...filters, severity: e.target.value })}
-            className="bg-slate-900 border border-slate-700 text-xs rounded-md px-3 py-1.5 text-slate-200 font-mono focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+            className="form-control"
           >
-            <option value="">All Severities</option>
+            <option value="">All severities</option>
             <option value="critical">Critical</option>
             <option value="high">High</option>
             <option value="medium">Medium</option>
             <option value="low">Low</option>
           </select>
-
           <select
+            id="findings-filter-framework"
             value={filters.framework}
             onChange={(e) => setFilters({ ...filters, framework: e.target.value })}
-            className="bg-slate-900 border border-slate-700 text-xs rounded-md px-3 py-1.5 text-slate-200 font-mono focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+            className="form-control"
           >
-            <option value="">All Frameworks</option>
+            <option value="">All frameworks</option>
             <option value="CIS">CIS</option>
-            <option value="NIST">NIST</option>
-            <option value="STIG">STIG</option>
-            <option value="ISO27001">ISO27001</option>
+            <option value="NIST">NIST SP 800-53</option>
+            <option value="STIG">DISA STIG</option>
+            <option value="ISO27001">ISO 27001</option>
           </select>
-
           <select
+            id="findings-filter-status"
             value={filters.status}
             onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-            className="bg-slate-900 border border-slate-700 text-xs rounded-md px-3 py-1.5 text-slate-200 font-mono focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+            className="form-control"
           >
-            <option value="">All Statuses</option>
+            <option value="">All statuses</option>
             <option value="open">Open</option>
-            <option value="in_progress">In Progress</option>
+            <option value="in_progress">In progress</option>
             <option value="remediated">Remediated</option>
-            <option value="false_positive">False Positive</option>
+            <option value="false_positive">False positive</option>
           </select>
         </div>
       </div>
 
-      {/* Main Split View: Findings Table + Full Evidence Inspector */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* Left Side: Findings Table */}
-        <div className="lg:col-span-7 bg-[#0f1523] border border-slate-800 rounded-lg overflow-hidden shadow-subtle">
-          <div className="overflow-x-auto max-h-[660px]">
-            <table className="w-full text-left text-xs font-mono">
-              <thead className="bg-slate-900/95 text-slate-400 border-b border-slate-800 uppercase text-[10px] sticky top-0 z-10">
+      {/* Split: table + inspector */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
+        {/* Table */}
+        <div className="lg:col-span-7 panel overflow-hidden">
+          <div className="overflow-x-auto" style={{ maxHeight: 640 }}>
+            <table className="data-table">
+              <thead>
                 <tr>
-                  <th className="p-3 font-semibold">Severity</th>
-                  <th className="p-3 font-semibold">Control</th>
-                  <th className="p-3 font-semibold font-sans">Title</th>
-                  <th className="p-3 font-semibold">Framework</th>
-                  <th className="p-3 text-right font-semibold">Risk</th>
+                  <th>Sev</th>
+                  <th
+                    className="cursor-pointer hover:text-[var(--text-primary)]"
+                    onClick={() => toggleSort('control_id')}
+                  >
+                    Control <SortArrow col="control_id" />
+                  </th>
+                  <th>Title</th>
+                  <th>Framework</th>
+                  <th
+                    className="text-right cursor-pointer hover:text-[var(--text-primary)]"
+                    onClick={() => toggleSort('risk_score')}
+                  >
+                    Risk <SortArrow col="risk_score" />
+                  </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/80 bg-slate-950/60">
+              <tbody>
                 {loading ? (
+                  [...Array(6)].map((_, i) => (
+                    <tr key={i}>
+                      <td><div className="skeleton h-4 w-16" /></td>
+                      <td><div className="skeleton h-3 w-20" /></td>
+                      <td><div className="skeleton h-3 w-48" /></td>
+                      <td><div className="skeleton h-3 w-14" /></td>
+                      <td className="text-right"><div className="skeleton h-3 w-8 ml-auto" /></td>
+                    </tr>
+                  ))
+                ) : sorted.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="p-8 text-center text-slate-500 font-mono">
-                      Loading violations...
-                    </td>
-                  </tr>
-                ) : filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="p-8 text-center text-slate-500 font-mono">
-                      No findings match criteria.
+                    <td colSpan={5} className="py-10 text-center text-[var(--text-muted)] font-mono">
+                      No findings match the current filters.
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((f) => {
-                    const isSelected = selectedFinding?.finding_id === f.finding_id;
+                  sorted.map((f) => {
+                    const sel = selectedFinding?.finding_id === f.finding_id;
                     return (
                       <tr
                         key={f.finding_id}
                         onClick={() => setSelectedFinding(f)}
-                        className={`cursor-pointer transition-colors ${
-                          isSelected
-                            ? 'bg-slate-900 border-l-2 border-blue-500'
-                            : 'hover:bg-slate-900/60'
-                        }`}
+                        className={`cursor-pointer ${sel ? 'row-selected' : ''}`}
                       >
-                        <td className="p-3">
-                          <SeverityBadge severity={f.severity} />
-                        </td>
-                        <td className="p-3 text-blue-400 font-bold">{f.control_id}</td>
-                        <td className="p-3 font-sans font-medium text-slate-200 truncate max-w-xs">
-                          {f.title}
-                        </td>
-                        <td className="p-3 text-slate-400">{f.framework}</td>
-                        <td className="p-3 text-right font-bold text-rose-400">
+                        <td><SeverityBadge severity={f.severity} /></td>
+                        <td className="font-mono text-[var(--accent-text)] font-semibold">{f.control_id}</td>
+                        <td className="text-[var(--text-primary)] font-medium max-w-xs truncate">{f.title}</td>
+                        <td className="font-mono text-[var(--text-muted)]">{f.framework}</td>
+                        <td className="text-right font-mono font-bold" style={{
+                          color: f.risk_score >= 7.5 ? '#e54d2e' : f.risk_score >= 5 ? '#e0813a' : '#c4a030',
+                        }}>
                           {f.risk_score?.toFixed(1)}
                         </td>
                       </tr>
@@ -206,128 +234,121 @@ export default function Findings({ setActiveTab, onSelectRemediation }) {
           </div>
         </div>
 
-        {/* Right Side: Exact Configuration Evidence Inspector */}
-        <div className="lg:col-span-5 space-y-4">
+        {/* Inspector */}
+        <div className="lg:col-span-5">
           {selectedFinding ? (
-            <div className="bg-[#0f1523] border border-slate-800 rounded-lg p-5 space-y-4 shadow-subtle">
-              {/* Finding Title & Severity Header */}
-              <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-800">
-                <div>
-                  <div className="flex items-center gap-2 mb-1.5">
+            <div className="panel p-4 space-y-4">
+              {/* Header */}
+              <div className="flex items-start justify-between gap-3 pb-3 border-b border-[var(--border)]">
+                <div className="min-w-0">
+                  <div className="flex items-center flex-wrap gap-1.5 mb-1.5">
                     <SeverityBadge severity={selectedFinding.severity} />
-                    <span className="text-[10px] font-mono text-blue-400 px-1.5 py-0.5 rounded bg-blue-950/80 border border-blue-800/60">
+                    <span className="text-[10px] font-mono text-[var(--accent-text)] border border-[var(--border)] px-1.5 py-0.5 rounded-sm">
                       {selectedFinding.control_id}
                     </span>
-                    <span className="text-[10px] font-mono text-slate-400">
-                      Confidence: {(selectedFinding.confidence_score * 100).toFixed(0)}%
+                    <span className="text-[10px] font-mono text-[var(--text-muted)]">
+                      confidence {(selectedFinding.confidence_score * 100).toFixed(0)}%
                     </span>
                   </div>
-                  <h3 className="text-sm font-semibold text-slate-100 font-sans">
+                  <h3 className="text-[13px] font-semibold text-[var(--text-primary)]">
                     {selectedFinding.title}
                   </h3>
                 </div>
-
                 <button
-                  onClick={() => handleAIEvaluation(selectedFinding)}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-blue-600/10 hover:bg-blue-600/20 text-blue-300 border border-blue-500/30 text-xs font-mono font-medium transition-colors shrink-0 cursor-pointer"
+                  onClick={() => handleAIEval(selectedFinding)}
+                  className="btn btn-secondary shrink-0"
+                  title="Get analysis"
                 >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Explain AI</span>
+                  <Brain className="w-3.5 h-3.5" aria-hidden="true" />
+                  <span>Explain</span>
                 </button>
               </div>
 
-              {/* Exact Verbatim Configuration Evidence */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
-                  <span className="font-semibold text-rose-400 flex items-center gap-1.5">
-                    <Code2 className="w-3.5 h-3.5" />
-                    Exact Configuration Evidence
-                  </span>
-                  <span className="text-slate-500">{selectedFinding.config_reference}</span>
+              {/* Config evidence */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <Code2 className="w-3.5 h-3.5 text-[#e54d2e]" aria-hidden="true" />
+                    <span className="section-label">Config evidence</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] font-mono text-[var(--text-muted)]">
+                      {selectedFinding.config_reference}
+                    </span>
+                    <CopyButton text={selectedFinding.config_evidence} />
+                  </div>
                 </div>
-                <div className="bg-[#080d17] border border-slate-800 rounded-md p-3 font-mono text-xs text-rose-300 overflow-x-auto leading-relaxed">
-                  <code>{selectedFinding.config_evidence}</code>
+                <pre className="code-block text-[#f07050] text-[11px] max-h-36 overflow-auto">
+                  {selectedFinding.config_evidence}
+                </pre>
+              </div>
+
+              {/* Description + impact */}
+              <div className="space-y-2 text-[12px]">
+                <div>
+                  <div className="section-label mb-1">Description</div>
+                  <p className="text-[var(--text-secondary)] leading-relaxed">{selectedFinding.description}</p>
+                </div>
+                <div>
+                  <div className="section-label mb-1" style={{ color: '#c4a030' }}>Impact</div>
+                  <p className="text-[var(--text-secondary)] leading-relaxed">{selectedFinding.impact}</p>
                 </div>
               </div>
 
-              {/* Technical Description & Adversarial Impact */}
-              <div className="space-y-2 text-xs">
-                <div>
-                  <h4 className="text-[10px] uppercase font-semibold text-slate-400 font-mono">
-                    Audit Description
-                  </h4>
-                  <p className="text-slate-300 mt-0.5 text-[11px] font-sans leading-relaxed">
-                    {selectedFinding.description}
-                  </p>
+              {/* Remediation */}
+              <div className="panel-nested p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="section-label" style={{ color: '#5b9e6e' }}>Vendor CLI fix</span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => {
+                        if (onSelectRemediation) onSelectRemediation(selectedFinding);
+                        setActiveTab('remediation');
+                      }}
+                      className="text-[10px] font-mono text-[var(--accent-text)] hover:underline flex items-center gap-1"
+                    >
+                      <Wrench className="w-3 h-3" aria-hidden="true" />
+                      Open simulator
+                    </button>
+                    <CopyButton text={selectedFinding.remediation_commands || selectedFinding.remediation_summary} />
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-[10px] uppercase font-semibold text-amber-400 font-mono">
-                    Security Impact
-                  </h4>
-                  <p className="text-slate-300 mt-0.5 text-[11px] font-sans leading-relaxed">
-                    {selectedFinding.impact}
-                  </p>
-                </div>
-              </div>
-
-              {/* Remediation Preview Box */}
-              <div className="p-3 rounded-md bg-slate-900 border border-slate-800 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-mono uppercase font-semibold text-emerald-400">
-                    Vendor Remediation CLI
-                  </span>
-                  <button
-                    onClick={() => {
-                      if (onSelectRemediation) onSelectRemediation(selectedFinding);
-                      setActiveTab('remediation');
-                    }}
-                    className="text-[10px] text-blue-400 hover:underline font-mono flex items-center gap-1 cursor-pointer"
-                  >
-                    <span>Open in Simulator</span>
-                    <Wrench className="w-3 h-3" />
-                  </button>
-                </div>
-                <pre className="text-[11px] font-mono text-emerald-300 overflow-x-auto bg-[#080d17] p-2.5 rounded border border-slate-800">
+                <pre className="code-block text-[#4db878] text-[11px] max-h-28 overflow-auto">
                   {selectedFinding.remediation_commands || selectedFinding.remediation_summary}
                 </pre>
               </div>
 
-              {/* Status Actions */}
-              <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-xs font-mono">
-                <span className="text-slate-400">
-                  Status: <strong className="text-blue-300 uppercase">{selectedFinding.status}</strong>
+              {/* Status actions */}
+              <div className="pt-2 border-t border-[var(--border)] flex items-center justify-between text-[12px] font-mono">
+                <span className="text-[var(--text-muted)]">
+                  Status: <strong className="text-[var(--text-secondary)] uppercase">{selectedFinding.status}</strong>
                 </span>
-                <div className="flex items-center gap-2">
+                <div className="flex gap-2">
                   <button
                     onClick={() => handleStatusChange(selectedFinding.finding_id, 'false_positive')}
-                    className="px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-medium transition-colors cursor-pointer"
+                    className="btn btn-secondary text-[11px]"
                   >
-                    False Positive
+                    False positive
                   </button>
                   <button
                     onClick={() => handleStatusChange(selectedFinding.finding_id, 'remediated')}
-                    className="px-2.5 py-1 rounded-md bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 border border-emerald-800/60 text-[10px] font-medium transition-colors cursor-pointer"
+                    className="btn btn-primary text-[11px]"
+                    style={{ background: '#1e6035', borderColor: '#1e6035' }}
                   >
-                    Mark Remediated
+                    Mark remediated
                   </button>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="bg-[#0f1523] border border-slate-800 rounded-lg p-12 text-center text-slate-500 text-xs font-mono">
-              Select a violation on the left to examine exact line-level evidence and AI threat analysis.
+            <div className="panel p-10 text-center text-[12px] font-mono text-[var(--text-muted)]">
+              Select a finding to inspect evidence and remediation.
             </div>
           )}
         </div>
       </div>
 
-      {/* AI Explanation Modal */}
-      <AIModal
-        isOpen={aiModalOpen}
-        onClose={() => setAiModalOpen(false)}
-        data={aiData}
-        loading={aiLoading}
-      />
+      <AIModal isOpen={aiModalOpen} onClose={() => setAiModalOpen(false)} data={aiData} loading={aiLoading} />
     </div>
   );
 }

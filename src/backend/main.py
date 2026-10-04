@@ -1,7 +1,7 @@
 """
 NETRA Backend - Main FastAPI Application
 AI-Driven Multi-Vendor Network Security Compliance Auditor
-SIH 2026 | PS ID: SIH26155 | Organization: NTRO
+| Organization: NTRO
 """
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
@@ -90,7 +90,6 @@ async def root():
         "name": "NETRA",
         "version": "1.0.0",
         "description": "AI-Driven Multi-Vendor Network Security Compliance Auditor",
-        "ps_id": "SIH26155",
         "organization": "NTRO",
         "status": "operational"
     }

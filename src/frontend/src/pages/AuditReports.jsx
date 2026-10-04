@@ -1,10 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  FileText,
-  Printer,
-  Sparkles,
-  Calendar
-} from 'lucide-react';
+import { Printer, FileText } from 'lucide-react';
 import { api } from '../api/client';
 
 export default function AuditReports() {
@@ -13,20 +8,16 @@ export default function AuditReports() {
   const [generating, setGenerating] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchReports();
-  }, []);
+  useEffect(() => { fetchReports(); }, []);
 
   const fetchReports = async () => {
     setLoading(true);
     try {
       const data = await api.getReports();
       setReports(data || []);
-      if (data && data.length > 0) {
-        setSelectedReport(data[0]);
-      }
-    } catch (e) {
-      console.error('Failed to load reports:', e);
+      if (data?.length > 0) setSelectedReport(data[0]);
+    } catch {
+      /* no-op */
     } finally {
       setLoading(false);
     }
@@ -35,12 +26,12 @@ export default function AuditReports() {
   const handleGenerateReport = async () => {
     setGenerating(true);
     try {
-      const newReport = await api.generateReport(
-        `NETRA Comprehensive Multi-Vendor Audit Report — ${new Date().toLocaleDateString()}`,
+      const r = await api.generateReport(
+        `NETRA Audit Report — ${new Date().toLocaleDateString()}`,
         'executive'
       );
-      setReports([newReport, ...reports]);
-      setSelectedReport(newReport);
+      setReports([r, ...reports]);
+      setSelectedReport(r);
     } catch (e) {
       alert('Report generation failed: ' + e.message);
     } finally {
@@ -48,182 +39,167 @@ export default function AuditReports() {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   return (
-    <div className="space-y-5 pb-12">
+    <div className="space-y-4 pb-10">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold font-mono tracking-tight text-slate-100 flex items-center gap-2">
-            <FileText className="w-5 h-5 text-blue-400" />
-            Audit Reports & Executive Compliance Scorecards
-          </h1>
-          <p className="text-xs text-slate-400 mt-1 font-sans">
-            Formal technical & executive compliance documentation for NTRO CISO and SIH review boards
+          <h1 className="text-[20px] font-bold text-[var(--text-primary)] tracking-tight">Audit Reports</h1>
+          <p className="text-[12px] text-[var(--text-muted)] mt-0.5">
+            Formal compliance documentation for NTRO CISO review
           </p>
         </div>
-
-        <div className="flex items-center gap-2.5 shrink-0">
-          <button
-            onClick={handlePrint}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-mono font-medium border border-slate-700 transition-colors cursor-pointer"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span>Print / PDF</span>
+        <div className="flex gap-2 shrink-0">
+          <button onClick={() => window.print()} className="btn btn-secondary">
+            <Printer className="w-3.5 h-3.5" aria-hidden="true" />
+            Print / PDF
           </button>
-
           <button
+            id="reports-generate-btn"
             onClick={handleGenerateReport}
             disabled={generating}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-md bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-mono text-xs font-medium shadow-sm disabled:opacity-50 cursor-pointer transition-colors"
+            className="btn btn-primary"
           >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>{generating ? 'Compiling...' : 'Compile Executive Report'}</span>
+            <FileText className="w-3.5 h-3.5" aria-hidden="true" />
+            {generating ? 'Compiling…' : 'Compile report'}
           </button>
         </div>
       </div>
 
-      {/* Main Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* Left Side: Report Archives */}
-        <div className="lg:col-span-4 bg-[#0f1523] border border-slate-800 rounded-lg p-4 space-y-3 shadow-subtle">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-300 font-mono">
-            Generated Audits ({reports.length})
-          </h2>
-
-          <div className="space-y-2 max-h-[640px] overflow-y-auto">
-            {reports.map((r) => {
-              const isSelected = selectedReport?.report_id === r.report_id;
-              return (
-                <div
-                  key={r.report_id}
-                  onClick={() => setSelectedReport(r)}
-                  className={`p-3 rounded-md border text-xs font-mono cursor-pointer transition-colors ${
-                    isSelected
-                      ? 'bg-slate-900 border-blue-500'
-                      : 'bg-slate-900/60 border-slate-800 hover:border-slate-700'
-                  }`}
-                >
-                  <div className="font-semibold text-slate-100 font-sans text-xs truncate">
-                    {r.title}
-                  </div>
-                  <div className="flex justify-between items-center text-[10px] text-slate-400 mt-2 font-mono">
-                    <span>{new Date(r.created_at).toLocaleDateString()}</span>
-                    <span className="text-emerald-400 font-semibold">{r.compliance_percentage}% Compliant</span>
-                  </div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
+        {/* Archive list */}
+        <div className="lg:col-span-4 panel p-4 space-y-2">
+          <div className="section-label mb-2">Generated ({reports.length})</div>
+          <div className="space-y-1.5 max-h-[640px] overflow-y-auto">
+            {loading ? (
+              [...Array(3)].map((_, i) => (
+                <div key={i} className="panel-nested p-3">
+                  <div className="skeleton h-3 w-4/5 mb-2" />
+                  <div className="skeleton h-2.5 w-3/5" />
                 </div>
-              );
-            })}
+              ))
+            ) : reports.length === 0 ? (
+              <div className="py-6 text-center text-[12px] font-mono text-[var(--text-muted)]">
+                No reports yet. Compile one above.
+              </div>
+            ) : (
+              reports.map((r) => {
+                const sel = selectedReport?.report_id === r.report_id;
+                return (
+                  <button
+                    key={r.report_id}
+                    onClick={() => setSelectedReport(r)}
+                    className={[
+                      'w-full text-left panel-nested p-3 transition-colors cursor-pointer',
+                      sel ? 'border-[var(--accent)]' : 'hover:border-[var(--border-muted)]',
+                    ].join(' ')}
+                  >
+                    <div className="text-[12px] font-medium text-[var(--text-primary)] truncate">{r.title}</div>
+                    <div className="flex justify-between items-center mt-1.5 text-[10px] font-mono text-[var(--text-muted)]">
+                      <span>{new Date(r.created_at).toLocaleDateString()}</span>
+                      <span style={{ color: '#5b9e6e' }} className="font-semibold">
+                        {r.compliance_percentage}% compliant
+                      </span>
+                    </div>
+                  </button>
+                );
+              })
+            )}
           </div>
         </div>
 
-        {/* Right Side: Formal Report Document View */}
+        {/* Report view */}
         <div className="lg:col-span-8">
           {selectedReport ? (
-            <div className="bg-[#0f1523] border border-slate-800 rounded-lg p-6 space-y-5 shadow-subtle text-slate-200">
-              {/* Report Header */}
-              <div className="border-b border-slate-800 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="panel p-5 space-y-5 text-[var(--text-secondary)]">
+              {/* Report header */}
+              <div className="pb-4 border-b border-[var(--border)] flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                 <div>
-                  <span className="text-[10px] font-mono uppercase font-bold tracking-wider text-blue-400 px-2 py-0.5 rounded bg-blue-950/80 border border-blue-800/60">
-                    OFFICIAL TECHNICAL AUDIT REPORT • NTRO
-                  </span>
-                  <h2 className="text-lg font-bold font-mono text-slate-100 mt-2">
-                    {selectedReport.title}
-                  </h2>
-                  <div className="flex items-center gap-2 text-xs text-slate-400 font-mono mt-1">
-                    <span>Generated by: {selectedReport.generated_by}</span>
-                    <span>•</span>
-                    <span>Date: {new Date(selectedReport.created_at).toUTCString()}</span>
+                  <div className="text-[10px] font-mono uppercase font-bold tracking-wider text-[var(--text-muted)] border border-[var(--border)] px-2 py-0.5 rounded-sm inline-block mb-2">
+                    Official audit report · NTRO
+                  </div>
+                  <h2 className="text-[16px] font-bold font-mono text-[var(--text-primary)]">{selectedReport.title}</h2>
+                  <div className="text-[11px] font-mono text-[var(--text-muted)] mt-1 space-x-2">
+                    <span>By: {selectedReport.generated_by}</span>
+                    <span>·</span>
+                    <span>{new Date(selectedReport.created_at).toUTCString()}</span>
                   </div>
                 </div>
-
-                <div className="text-right">
-                  <span className="text-[10px] uppercase font-mono text-slate-400">Posture Score</span>
-                  <div className="text-2xl font-bold font-mono text-blue-400">
+                <div className="text-right shrink-0">
+                  <div className="text-[10px] font-mono text-[var(--text-muted)]">Posture score</div>
+                  <div className="text-[28px] font-bold font-mono text-[var(--accent-text)] leading-none mt-0.5">
                     {selectedReport.compliance_percentage}%
                   </div>
                 </div>
               </div>
 
-              {/* Metrics Summary Strip */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-                <div className="p-3 rounded-md bg-slate-900 border border-slate-800">
-                  <span className="text-[10px] font-mono text-slate-400 uppercase">Total Nodes</span>
-                  <div className="text-lg font-bold font-mono text-slate-100 mt-0.5">
-                    {selectedReport.total_devices} Assets
+              {/* Metric strip */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {[
+                  { label: 'Devices',    value: selectedReport.total_devices,    color: null },
+                  { label: 'Violations', value: selectedReport.total_findings,   color: '#e54d2e' },
+                  { label: 'Mean risk',  value: `${selectedReport.overall_risk_score}/10`, color: '#e0813a' },
+                  { label: 'Critical',   value: selectedReport.severity_breakdown?.critical || 0, color: '#e54d2e' },
+                ].map(({ label, value, color }) => (
+                  <div key={label} className="panel-nested p-3 text-center">
+                    <div className="section-label">{label}</div>
+                    <div
+                      className="text-[16px] font-bold font-mono mt-1"
+                      style={{ color: color || 'var(--text-primary)' }}
+                    >
+                      {value}
+                    </div>
                   </div>
-                </div>
-                <div className="p-3 rounded-md bg-slate-900 border border-slate-800">
-                  <span className="text-[10px] font-mono text-slate-400 uppercase">Violations</span>
-                  <div className="text-lg font-bold font-mono text-rose-400 mt-0.5">
-                    {selectedReport.total_findings}
-                  </div>
-                </div>
-                <div className="p-3 rounded-md bg-slate-900 border border-slate-800">
-                  <span className="text-[10px] font-mono text-slate-400 uppercase">Mean Risk</span>
-                  <div className="text-lg font-bold font-mono text-amber-400 mt-0.5">
-                    {selectedReport.overall_risk_score} / 10
-                  </div>
-                </div>
-                <div className="p-3 rounded-md bg-slate-900 border border-slate-800">
-                  <span className="text-[10px] font-mono text-slate-400 uppercase">Critical Tier</span>
-                  <div className="text-lg font-bold font-mono text-rose-400 mt-0.5">
-                    {selectedReport.severity_breakdown?.critical || 0}
-                  </div>
-                </div>
+                ))}
               </div>
 
-              {/* Executive Summary */}
-              <div className="space-y-1.5">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-blue-400 font-mono">
-                  1. Executive Summary
-                </h3>
-                <p className="text-xs font-sans text-slate-300 leading-relaxed bg-[#080d17] p-3.5 rounded-md border border-slate-800">
+              {/* Executive summary */}
+              <div>
+                <div className="section-label mb-2">1. Executive summary</div>
+                <div className="code-block text-[12px] leading-relaxed text-[var(--text-secondary)]">
                   {selectedReport.executive_summary}
-                </p>
+                </div>
               </div>
 
-              {/* Framework Compliance Scorecard */}
-              <div className="space-y-1.5">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-blue-400 font-mono">
-                  2. Standards Alignment Scorecard
-                </h3>
+              {/* Framework scorecard */}
+              <div>
+                <div className="section-label mb-2">2. Standards alignment</div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {Object.entries(selectedReport.framework_breakdown || {}).map(([fw, val]) => (
-                    <div key={fw} className="p-2.5 rounded-md bg-slate-900 border border-slate-800 text-center font-mono">
-                      <div className="text-[11px] text-slate-400">{fw}</div>
-                      <div className="text-base font-bold text-slate-100 mt-0.5">{val}%</div>
+                    <div key={fw} className="panel-nested p-2.5 text-center font-mono">
+                      <div className="text-[11px] text-[var(--text-muted)]">{fw}</div>
+                      <div
+                        className="text-[16px] font-bold mt-0.5"
+                        style={{ color: val >= 75 ? '#5b9e6e' : val >= 60 ? '#4ecdc4' : '#c4a030' }}
+                      >
+                        {val}%
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Priority Remediation Action Items */}
-              <div className="space-y-1.5">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-blue-400 font-mono">
-                  3. Priority Remediation Action Items
-                </h3>
-                <div className="space-y-2">
+              {/* Recommendations */}
+              <div>
+                <div className="section-label mb-2">3. Priority remediation items</div>
+                <div className="space-y-1.5">
                   {(selectedReport.recommendations || []).map((rec, i) => (
-                    <div
-                      key={i}
-                      className="p-3 rounded-md bg-[#080d17] border border-slate-800 text-xs font-mono flex items-start gap-2.5"
-                    >
-                      <span className="w-4 h-4 rounded bg-blue-950/80 text-blue-400 border border-blue-800/60 flex items-center justify-center shrink-0 font-bold text-[10px]">
+                    <div key={i} className="panel-nested p-3 text-[12px] flex items-start gap-3">
+                      <span
+                        className="w-5 h-5 rounded-sm border flex items-center justify-center shrink-0 font-mono font-bold text-[10px]"
+                        style={{ color: 'var(--accent-text)', borderColor: 'var(--accent)' }}
+                      >
                         {i + 1}
                       </span>
-                      <span className="text-slate-300 font-sans leading-relaxed">{rec}</span>
+                      <span className="text-[var(--text-secondary)] leading-relaxed">{rec}</span>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
           ) : (
-            <div className="bg-[#0f1523] border border-slate-800 rounded-lg p-12 text-center text-slate-500 text-xs font-mono">
-              Select or compile a report to inspect the formal compliance dossier.
+            <div className="panel p-10 text-center text-[12px] font-mono text-[var(--text-muted)]">
+              Select a report to view the compliance dossier.
             </div>
           )}
         </div>

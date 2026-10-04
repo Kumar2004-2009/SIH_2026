@@ -1,10 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  FileCheck2,
-  Search,
-  ChevronDown,
-  ChevronUp
-} from 'lucide-react';
+import { Search, ChevronDown, ChevronUp } from 'lucide-react';
 import { api } from '../api/client';
 import SeverityBadge from '../components/SeverityBadge';
 
@@ -20,8 +15,8 @@ export default function ComplianceExplorer() {
   useEffect(() => {
     fetchRules();
     api.getFrameworkStats()
-      .then((data) => setFrameworkStats(data || {}))
-      .catch((err) => console.warn('Stats err:', err));
+      .then((d) => setFrameworkStats(d || {}))
+      .catch(() => {});
   }, [selectedFramework, selectedSeverity]);
 
   const fetchRules = async () => {
@@ -29,8 +24,8 @@ export default function ComplianceExplorer() {
     try {
       const res = await api.getComplianceRules(selectedFramework, selectedSeverity);
       setRules(res.rules || []);
-    } catch (e) {
-      console.error('Failed to load rules:', e);
+    } catch {
+      /* no-op */
     } finally {
       setLoading(false);
     }
@@ -47,101 +42,87 @@ export default function ComplianceExplorer() {
   });
 
   return (
-    <div className="space-y-5 pb-12">
+    <div className="space-y-4 pb-10">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-bold font-mono tracking-tight text-slate-100 flex items-center gap-2">
-          <FileCheck2 className="w-5 h-5 text-blue-400" />
-          Deterministic Compliance Explorer & Framework Policies
-        </h1>
-        <p className="text-xs text-slate-400 mt-1 font-sans">
-          Formal rule catalog mapped to CIS Benchmark, NIST SP 800-53, DISA STIG, and ISO/IEC 27001
+        <h1 className="text-[20px] font-bold text-[var(--text-primary)] tracking-tight">Compliance Explorer</h1>
+        <p className="text-[12px] text-[var(--text-muted)] mt-0.5">
+          Control catalog — CIS Benchmark, NIST SP 800-53, DISA STIG, ISO/IEC 27001
         </p>
       </div>
 
-      {/* Framework Scorecards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      {/* Framework score row */}
+      <div className="flex flex-wrap gap-2">
         {Object.entries(frameworkStats).map(([name, data]) => {
-          const isSelected = selectedFramework === name;
+          const active = selectedFramework === name;
+          const color = data.status === 'Compliant' ? '#5b9e6e' : '#c4a030';
           return (
-            <div
+            <button
               key={name}
-              onClick={() => setSelectedFramework(isSelected ? '' : name)}
-              className={`rounded-lg p-3.5 cursor-pointer transition-colors border shadow-subtle ${
-                isSelected
-                  ? 'border-blue-500 bg-slate-900'
-                  : 'bg-[#0f1523] border-slate-800 hover:border-slate-700'
-              }`}
+              id={`compliance-fw-${name}`}
+              onClick={() => setSelectedFramework(active ? '' : name)}
+              className={[
+                'panel px-3 py-2 text-left transition-colors cursor-pointer',
+                active ? 'border-[var(--accent)]' : 'hover:border-[var(--border-muted)]',
+              ].join(' ')}
             >
-              <div className="flex justify-between items-center text-xs font-mono">
-                <span className="font-bold text-slate-100">{name}</span>
-                <span
-                  className={`text-[10px] font-semibold font-mono px-1.5 py-0.2 rounded border ${
-                    data.status === 'Compliant'
-                      ? 'bg-emerald-950/50 text-emerald-300 border-emerald-800/50'
-                      : 'bg-amber-950/50 text-amber-300 border-amber-800/50'
-                  }`}
-                >
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-[12px] font-mono font-bold text-[var(--text-primary)]">{name}</span>
+                <span className="text-[12px] font-mono font-bold" style={{ color }}>
                   {data.compliance_pct}%
                 </span>
               </div>
-              <div className="mt-2 text-[11px] text-slate-400 font-sans">
-                {data.findings_count} active deviations
+              <div className="text-[11px] text-[var(--text-muted)] mt-0.5 font-mono">
+                {data.findings_count} deviations
               </div>
-            </div>
+            </button>
           );
         })}
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="bg-[#0f1523] border border-slate-800 rounded-lg p-3 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-subtle">
-        <div className="relative w-full sm:w-80">
-          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+      {/* Filters */}
+      <div className="panel p-2.5 flex flex-col sm:flex-row items-start sm:items-center gap-2">
+        <div className="relative">
+          <Search className="w-3.5 h-3.5 text-[var(--text-muted)] absolute left-2.5 top-2.5" aria-hidden="true" />
           <input
+            id="compliance-search"
             type="text"
-            placeholder="Search control ID, title, or keywords..."
+            placeholder="Control ID, title, keywords…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-700 rounded-md pl-9 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono"
+            className="form-control pl-8 w-64"
           />
         </div>
-
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-          {/* Framework Filter */}
+        <div className="flex gap-2">
           <select
+            id="compliance-fw-filter"
             value={selectedFramework}
             onChange={(e) => setSelectedFramework(e.target.value)}
-            className="bg-slate-900 border border-slate-700 text-xs rounded-md px-3 py-1.5 text-slate-200 font-mono focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+            className="form-control"
           >
-            <option value="">All Frameworks</option>
+            <option value="">All frameworks</option>
             <option value="CIS">CIS Benchmark</option>
             <option value="NIST">NIST SP 800-53</option>
             <option value="STIG">DISA STIG</option>
             <option value="ISO27001">ISO/IEC 27001</option>
             <option value="PCI-DSS">PCI-DSS v4.0</option>
           </select>
-
-          {/* Severity Filter */}
           <select
+            id="compliance-sev-filter"
             value={selectedSeverity}
             onChange={(e) => setSelectedSeverity(e.target.value)}
-            className="bg-slate-900 border border-slate-700 text-xs rounded-md px-3 py-1.5 text-slate-200 font-mono focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+            className="form-control"
           >
-            <option value="">All Severities</option>
+            <option value="">All severities</option>
             <option value="critical">Critical</option>
             <option value="high">High</option>
             <option value="medium">Medium</option>
             <option value="low">Low</option>
           </select>
-
           {(selectedFramework || selectedSeverity || search) && (
             <button
-              onClick={() => {
-                setSelectedFramework('');
-                setSelectedSeverity('');
-                setSearch('');
-              }}
-              className="text-xs text-blue-400 hover:underline px-2 font-mono cursor-pointer"
+              onClick={() => { setSelectedFramework(''); setSelectedSeverity(''); setSearch(''); }}
+              className="btn btn-ghost text-[11px] font-mono"
             >
               Reset
             </button>
@@ -149,97 +130,88 @@ export default function ComplianceExplorer() {
         </div>
       </div>
 
-      {/* Rules Catalog Table */}
-      <div className="bg-[#0f1523] border border-slate-800 rounded-lg overflow-hidden shadow-subtle">
+      {/* Rules table */}
+      <div className="panel overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs font-mono">
-            <thead className="bg-slate-900/90 text-slate-400 border-b border-slate-800 uppercase text-[10px]">
+          <table className="data-table">
+            <thead>
               <tr>
-                <th className="p-3.5 font-semibold">Control ID</th>
-                <th className="p-3.5 font-semibold">Severity</th>
-                <th className="p-3.5 font-semibold font-sans">Standard Title & Rationale</th>
-                <th className="p-3.5 font-semibold">Framework</th>
-                <th className="p-3.5 font-semibold">Fabric</th>
-                <th className="p-3.5 text-right font-semibold">Details</th>
+                <th>Control</th>
+                <th>Sev</th>
+                <th>Title &amp; description</th>
+                <th>Framework</th>
+                <th>Fabric</th>
+                <th className="text-right w-8"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/80 bg-slate-950/60">
+            <tbody>
               {loading ? (
-                <tr>
-                  <td colSpan={6} className="p-8 text-center text-slate-500 font-mono">
-                    Loading compliance rules...
-                  </td>
-                </tr>
+                [...Array(8)].map((_, i) => (
+                  <tr key={i}>
+                    <td><div className="skeleton h-3 w-20" /></td>
+                    <td><div className="skeleton h-4 w-16" /></td>
+                    <td><div className="skeleton h-3 w-56" /></td>
+                    <td><div className="skeleton h-3 w-14" /></td>
+                    <td><div className="skeleton h-3 w-16" /></td>
+                    <td />
+                  </tr>
+                ))
               ) : filteredRules.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-slate-500 font-mono">
-                    No compliance controls match the selected filters.
+                  <td colSpan={6} className="py-10 text-center text-[var(--text-muted)] font-mono">
+                    No controls match the current filters.
                   </td>
                 </tr>
               ) : (
                 filteredRules.map((rule) => {
-                  const isExp = expandedRule === rule.control_id;
+                  const expanded = expandedRule === rule.control_id;
                   return (
                     <React.Fragment key={rule.control_id}>
                       <tr
-                        onClick={() => setExpandedRule(isExp ? null : rule.control_id)}
-                        className="hover:bg-slate-900/60 cursor-pointer transition-colors"
+                        onClick={() => setExpandedRule(expanded ? null : rule.control_id)}
+                        className="cursor-pointer"
                       >
-                        <td className="p-3.5 font-bold text-blue-400 font-mono">
-                          {rule.control_id}
-                        </td>
-                        <td className="p-3.5">
-                          <SeverityBadge severity={rule.severity} />
-                        </td>
-                        <td className="p-3.5 font-sans">
-                          <div className="font-medium text-slate-200">{rule.title}</div>
-                          <div className="text-[11px] text-slate-400 mt-0.5 line-clamp-1 font-sans">
+                        <td className="font-mono text-[var(--accent-text)] font-bold">{rule.control_id}</td>
+                        <td><SeverityBadge severity={rule.severity} /></td>
+                        <td>
+                          <div className="font-medium text-[var(--text-primary)]">{rule.title}</div>
+                          <div className="text-[11px] text-[var(--text-muted)] mt-0.5 line-clamp-1">
                             {rule.description}
                           </div>
                         </td>
-                        <td className="p-3.5">
-                          <span className="px-2 py-0.5 rounded bg-slate-800/90 border border-slate-700/60 text-slate-300 font-medium text-[10px] font-mono">
+                        <td>
+                          <span className="text-[10px] font-mono text-[var(--text-muted)] border border-[var(--border)] px-1.5 py-0.5 rounded-sm">
                             {rule.framework}
                           </span>
                         </td>
-                        <td className="p-3.5 text-slate-400 capitalize">
+                        <td className="text-[var(--text-muted)] capitalize">
                           {rule.vendor_applicability?.replace('_', ' ')}
                         </td>
-                        <td className="p-3.5 text-right">
-                          <button className="text-slate-400 hover:text-white p-1">
-                            {isExp ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        <td className="text-right">
+                          <button className="btn btn-ghost p-1">
+                            {expanded
+                              ? <ChevronUp className="w-3.5 h-3.5" aria-hidden="true" />
+                              : <ChevronDown className="w-3.5 h-3.5" aria-hidden="true" />}
                           </button>
                         </td>
                       </tr>
 
-                      {/* Expanded Rule Details */}
-                      {isExp && (
-                        <tr className="bg-slate-900/90 border-b border-slate-800">
-                          <td colSpan={6} className="p-5 space-y-3.5 font-sans text-xs">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div className="space-y-1">
-                                <h4 className="font-semibold text-blue-400 font-mono uppercase text-[10px]">
-                                  Technical Description
-                                </h4>
-                                <p className="text-slate-300 leading-relaxed font-sans text-xs">
-                                  {rule.description}
-                                </p>
+                      {expanded && (
+                        <tr className="bg-[var(--bg-base)]">
+                          <td colSpan={6} className="p-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[12px]">
+                              <div>
+                                <div className="section-label mb-1.5">Technical description</div>
+                                <p className="text-[var(--text-secondary)] leading-relaxed">{rule.description}</p>
                               </div>
-                              <div className="space-y-1">
-                                <h4 className="font-semibold text-rose-400 font-mono uppercase text-[10px]">
-                                  Adversarial Impact
-                                </h4>
-                                <p className="text-slate-300 leading-relaxed font-sans text-xs">
-                                  {rule.impact}
-                                </p>
+                              <div>
+                                <div className="section-label mb-1.5" style={{ color: '#e54d2e' }}>Adversarial impact</div>
+                                <p className="text-[var(--text-secondary)] leading-relaxed">{rule.impact}</p>
                               </div>
                             </div>
-
-                            <div className="p-3 rounded-md bg-[#080d17] border border-slate-800 space-y-1">
-                              <h4 className="font-semibold text-emerald-400 font-mono uppercase text-[10px]">
-                                Recommended Hardening Strategy
-                              </h4>
-                              <p className="text-slate-300 font-mono text-[11px] leading-relaxed">
+                            <div className="mt-3 code-block">
+                              <div className="section-label mb-1.5" style={{ color: '#5b9e6e' }}>Hardening strategy</div>
+                              <p className="font-mono text-[11px] text-[var(--text-secondary)] leading-relaxed">
                                 {rule.remediation_summary}
                               </p>
                             </div>

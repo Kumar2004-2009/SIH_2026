@@ -1,44 +1,33 @@
 import React from 'react';
 
-export default function RiskMeter({ score = 0, max = 10, size = 'md' }) {
+// Horizontal risk bar — no rounded pill track, no glow
+export default function RiskMeter({ score = 0, max = 10 }) {
   const normalized = Math.min(Math.max(score, 0), max);
-  const percentage = (normalized / max) * 100;
+  const pct = (normalized / max) * 100;
 
-  const getColorConfig = () => {
-    if (normalized >= 7.5) {
-      return { bar: 'bg-rose-500', text: 'text-rose-400', badge: 'bg-rose-950/60 text-rose-300 border-rose-800/60', label: 'Critical' };
-    }
-    if (normalized >= 5.0) {
-      return { bar: 'bg-amber-500', text: 'text-amber-400', badge: 'bg-amber-950/60 text-amber-300 border-amber-800/60', label: 'High' };
-    }
-    if (normalized >= 2.5) {
-      return { bar: 'bg-yellow-400', text: 'text-yellow-300', badge: 'bg-yellow-950/50 text-yellow-300 border-yellow-800/50', label: 'Elevated' };
-    }
-    return { bar: 'bg-emerald-500', text: 'text-emerald-400', badge: 'bg-emerald-950/50 text-emerald-300 border-emerald-800/50', label: 'Nominal' };
-  };
+  const color =
+    normalized >= 7.5 ? '#e54d2e' :
+    normalized >= 5.0 ? '#e0813a' :
+    normalized >= 2.5 ? '#c4a030' :
+    '#5b9e6e';
 
-  const config = getColorConfig();
+  const label =
+    normalized >= 7.5 ? 'Critical' :
+    normalized >= 5.0 ? 'High' :
+    normalized >= 2.5 ? 'Elevated' :
+    'Low';
 
   return (
-    <div className="flex flex-col gap-1.5 w-full">
-      <div className="flex justify-between items-center text-xs">
-        <span className="font-medium text-slate-400 font-mono uppercase tracking-wider text-[11px]">
-          Risk Index
+    <div className="w-full space-y-1.5">
+      <div className="flex justify-between items-center">
+        <span className="section-label">Risk index</span>
+        <span className="font-mono text-[12px] font-semibold" style={{ color }}>
+          {normalized.toFixed(1)}<span className="text-[var(--text-muted)] font-normal">/{max}</span>
+          {' '}<span className="text-[10px] uppercase">{label}</span>
         </span>
-        <div className="flex items-center gap-1.5 font-mono">
-          <span className="font-bold text-slate-200">
-            {normalized.toFixed(1)} <span className="text-slate-500 text-[10px]">/ {max}</span>
-          </span>
-          <span className={`text-[9px] uppercase font-semibold px-1.5 py-0.2 rounded border ${config.badge}`}>
-            {config.label}
-          </span>
-        </div>
       </div>
-      <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-        <div
-          className={`h-full rounded-full ${config.bar} transition-all duration-300`}
-          style={{ width: `${percentage}%` }}
-        />
+      <div className="progress-track">
+        <div className="progress-fill" style={{ width: `${pct}%`, backgroundColor: color }} />
       </div>
     </div>
   );

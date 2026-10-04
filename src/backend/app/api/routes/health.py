@@ -27,7 +27,6 @@ async def health_check():
         "status": "healthy" if db_status == "connected" else "degraded",
         "app_name": "NETRA",
         "organization": "NTRO",
-        "ps_id": "SIH26155",
         "database": db_status,
         "ai_enabled": settings.AI_ENABLED and bool(settings.GEMINI_API_KEY),
         "timestamp": datetime.utcnow().isoformat()

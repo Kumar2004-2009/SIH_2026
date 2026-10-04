@@ -8,85 +8,107 @@ import {
   ShieldCheck,
   Wrench,
   GitCompare,
-  FileText
+  FileText,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, badge: null },
-  { id: 'audit', label: 'Configuration Audit', icon: FileCode2, badge: 'Pipeline' },
-  { id: 'compliance', label: 'Compliance Explorer', icon: FileCheck2, badge: 'CIS/NIST' },
-  { id: 'findings', label: 'Findings & Evidence', icon: AlertTriangle, badge: 'Active' },
-  { id: 'graph', label: 'Security Graph', icon: Network, badge: 'Attack Paths' },
-  { id: 'risk', label: 'Risk Analysis', icon: ShieldCheck, badge: null },
-  { id: 'remediation', label: 'Remediation Simulator', icon: Wrench, badge: 'Safe Fix' },
-  { id: 'drift', label: 'Configuration Drift', icon: GitCompare, badge: null },
-  { id: 'reports', label: 'Audit Reports', icon: FileText, badge: 'Export' },
+  { id: 'dashboard',   label: 'Dashboard',            icon: LayoutDashboard },
+  { id: 'audit',       label: 'Config Audit',          icon: FileCode2       },
+  { id: 'compliance',  label: 'Compliance Explorer',   icon: FileCheck2      },
+  { id: 'findings',    label: 'Findings',              icon: AlertTriangle   },
+  { id: 'graph',       label: 'Security Graph',        icon: Network         },
+  { id: 'risk',        label: 'Risk Analysis',         icon: ShieldCheck     },
+  { id: 'remediation', label: 'Remediation Simulator', icon: Wrench          },
+  { id: 'drift',       label: 'Config Drift',          icon: GitCompare      },
+  { id: 'reports',     label: 'Audit Reports',         icon: FileText        },
 ];
 
-export default function Sidebar({ activeTab, setActiveTab }) {
-  return (
-    <aside className="w-60 border-r border-slate-800 bg-[#0b0f19] flex flex-col justify-between p-3 shrink-0 h-[calc(100vh-3.5rem)] sticky top-14 select-none">
-      {/* Navigation Links */}
-      <div className="space-y-1">
-        <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500 font-mono">
-          Security Operations
-        </div>
+const VENDORS = ['Cisco IOS', 'Juniper JunOS', 'Fortinet FortiOS', 'Palo Alto PAN-OS', 'Arista EOS', 'SONiC'];
 
-        <nav className="space-y-0.5">
+export default function Sidebar({ activeTab, setActiveTab, collapsed, onToggle }) {
+  const width = collapsed ? 44 : 224; // px values: w-11 vs w-56
+
+  return (
+    <aside
+      className="border-r border-[var(--border)] bg-[var(--bg-raised)] flex flex-col shrink-0 overflow-hidden"
+      style={{
+        width,
+        minWidth: width,
+        height: 'calc(100vh - 44px)',
+        transition: 'width 150ms ease, min-width 150ms ease',
+      }}
+      role="navigation"
+      aria-label="Primary navigation"
+    >
+      {/* Toggle button at the top */}
+      <div className="flex items-center justify-end px-2 py-1.5 border-b border-[var(--border)]">
+        <button
+          onClick={onToggle}
+          className="btn btn-ghost p-1.5 rounded-sm"
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {collapsed
+            ? <ChevronRight className="w-3.5 h-3.5 text-[var(--text-muted)]" aria-hidden="true" />
+            : <ChevronLeft  className="w-3.5 h-3.5 text-[var(--text-muted)]" aria-hidden="true" />}
+        </button>
+      </div>
+
+      {/* Nav items */}
+      <div className="flex-1 py-2 overflow-y-auto overflow-x-hidden">
+        {!collapsed && (
+          <div className="px-3 mb-1 section-label">Modules</div>
+        )}
+        <nav>
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
-            const isActive = activeTab === item.id;
+            const active = activeTab === item.id;
             return (
               <button
                 key={item.id}
+                id={`nav-${item.id}`}
                 onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-colors group cursor-pointer ${
-                  isActive
-                    ? 'bg-slate-800 text-slate-100 font-semibold'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/80'
-                }`}
+                title={collapsed ? item.label : undefined}
+                className={[
+                  'w-full flex items-center gap-2.5 py-1.5 text-[12px] font-medium transition-colors',
+                  collapsed ? 'justify-center px-2' : 'px-3',
+                  active
+                    ? 'bg-[var(--bg-overlay)] text-[var(--text-primary)] border-l-2 border-[var(--accent)]'
+                    : 'text-[var(--text-secondary)] hover:bg-[var(--bg-overlay)] hover:text-[var(--text-primary)] border-l-2 border-transparent',
+                ].join(' ')}
+                style={collapsed ? { paddingLeft: active ? 9 : 11 } : {}}
               >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <Icon
-                    className={`w-4 h-4 shrink-0 transition-colors ${
-                      isActive ? 'text-blue-400' : 'text-slate-400 group-hover:text-slate-300'
-                    }`}
-                  />
-                  <span className="truncate">{item.label}</span>
-                </div>
-
-                {item.badge && (
-                  <span
-                    className={`text-[9px] font-mono px-1.5 py-0.5 rounded shrink-0 ${
-                      isActive
-                        ? 'bg-blue-950/80 text-blue-300 border border-blue-800/60'
-                        : 'bg-slate-900 text-slate-400 border border-slate-800'
-                    }`}
-                  >
-                    {item.badge}
-                  </span>
-                )}
+                <Icon
+                  className="w-3.5 h-3.5 shrink-0"
+                  style={{ color: active ? 'var(--accent-text)' : undefined }}
+                  aria-hidden="true"
+                />
+                {!collapsed && <span className="truncate">{item.label}</span>}
               </button>
             );
           })}
         </nav>
       </div>
 
-      {/* Multi-Vendor Compatibility Footer */}
-      <div className="border border-slate-800/90 bg-slate-900/50 rounded-md p-3 mt-3">
-        <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider font-mono mb-2 flex items-center justify-between">
-          <span>Supported Fabrics</span>
-          <span className="text-slate-500 text-[9px]">v1.0.0</span>
+      {/* Footer — only shown when expanded */}
+      {!collapsed && (
+        <div className="border-t border-[var(--border)] p-3">
+          <div className="section-label mb-2">Supported vendors</div>
+          <div className="flex flex-wrap gap-1">
+            {VENDORS.map((v) => (
+              <span
+                key={v}
+                className="text-[10px] font-mono text-[var(--text-muted)] border border-[var(--border)] px-1.5 py-0.5 rounded-sm bg-[var(--bg-base)]"
+              >
+                {v}
+              </span>
+            ))}
+          </div>
+          <p className="text-[10px] font-mono text-[var(--text-muted)] mt-2">v1.0.0</p>
         </div>
-        <div className="flex flex-wrap gap-1 text-[10px] font-mono text-slate-400">
-          <span className="px-1.5 py-0.5 rounded bg-slate-800/80 border border-slate-700/50">Cisco IOS</span>
-          <span className="px-1.5 py-0.5 rounded bg-slate-800/80 border border-slate-700/50">JunOS</span>
-          <span className="px-1.5 py-0.5 rounded bg-slate-800/80 border border-slate-700/50">FortiOS</span>
-          <span className="px-1.5 py-0.5 rounded bg-slate-800/80 border border-slate-700/50">PAN-OS</span>
-          <span className="px-1.5 py-0.5 rounded bg-slate-800/80 border border-slate-700/50">Arista</span>
-          <span className="px-1.5 py-0.5 rounded bg-slate-800/80 border border-slate-700/50">SONiC</span>
-        </div>
-      </div>
+      )}
     </aside>
   );
 }
