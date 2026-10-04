@@ -23,21 +23,21 @@ export default function App() {
 
   const renderPage = () => {
     switch (activeTab) {
-      case 'dashboard':    return <Dashboard setActiveTab={setActiveTab} />;
-      case 'audit':        return <ConfigAudit setActiveTab={setActiveTab} />;
-      case 'compliance':   return <ComplianceExplorer />;
-      case 'findings':     return (
+      case 'dashboard': return <Dashboard setActiveTab={setActiveTab} />;
+      case 'audit': return <ConfigAudit setActiveTab={setActiveTab} />;
+      case 'compliance': return <ComplianceExplorer />;
+      case 'findings': return (
         <Findings
           setActiveTab={setActiveTab}
           onSelectRemediation={(f) => setSelectedFindingForRemediation(f)}
         />
       );
-      case 'graph':        return <SecurityGraph />;
-      case 'risk':         return <RiskAnalysis setActiveTab={setActiveTab} />;
-      case 'remediation':  return <RemediationSimulator selectedFindingFromOtherTab={selectedFindingForRemediation} />;
-      case 'drift':        return <ConfigDrift />;
-      case 'reports':      return <AuditReports />;
-      default:             return <Dashboard setActiveTab={setActiveTab} />;
+      case 'graph': return <SecurityGraph />;
+      case 'risk': return <RiskAnalysis setActiveTab={setActiveTab} />;
+      case 'remediation': return <RemediationSimulator selectedFindingFromOtherTab={selectedFindingForRemediation} />;
+      case 'drift': return <ConfigDrift />;
+      case 'reports': return <AuditReports />;
+      default: return <Dashboard setActiveTab={setActiveTab} />;
     }
   };
 

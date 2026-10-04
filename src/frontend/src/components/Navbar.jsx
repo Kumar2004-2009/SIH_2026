@@ -33,7 +33,7 @@ export default function Navbar({ onQuickAuditClick }) {
         <Shield className="w-4 h-4 text-[var(--accent-text)] shrink-0" aria-hidden="true" />
         <div className="flex items-center gap-2">
           <span className="cursor-pointer font-mono text-[13px] font-bold tracking-widest text-[var(--text-primary)] uppercase"
-            onClick={() => { window.location.href = "/dashboard"; }}>
+            onClick={() => { window.location.href = "/"; }}>
             NETRA
           </span>
           <span className="h-3 w-px bg-[var(--border)]" />
